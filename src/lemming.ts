@@ -319,7 +319,7 @@ export class Lemming {
 
   private updateBuilding(terrain: Terrain): void {
     this.buildTimer++;
-    if (this.buildTimer < 30) return;
+    if (this.buildTimer < 45) return;
     this.buildTimer = 0;
 
     this.buildCount++;
@@ -331,9 +331,10 @@ export class Lemming {
     const nextY = this.y - BUILD_STEP_HEIGHT;
     const nextX = this.x + this.direction * (BUILD_STEP_WIDTH / 2);
     const ceilingAbove = terrain.isSolid(nextX, nextY - LEMMING_HEIGHT);
-    // Check if the lemming's body would be inside terrain after moving
-    const bodyBlocked = terrain.isSolid(nextX + this.direction * 2, nextY) &&
-                        terrain.isSolid(nextX + this.direction * 2, nextY - 4);
+    // Check if the step edge would touch existing terrain
+    const stepEdge = this.direction === 1 ? nextX + BUILD_STEP_WIDTH / 2 : nextX - BUILD_STEP_WIDTH / 2;
+    const bodyBlocked = terrain.isSolid(stepEdge, nextY) &&
+                        terrain.isSolid(stepEdge, nextY - 4);
     if (ceilingAbove || bodyBlocked) {
       this.direction *= -1;
       this.state = 'walking';
