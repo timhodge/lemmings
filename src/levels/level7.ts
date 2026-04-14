@@ -15,6 +15,7 @@ const level: LevelData = {
   abilities: {
     exploder: 5,
     blocker: 4,
+    basher: 5,
     builder: 5,
   },
   buildTerrain(ctx, w, h) {
