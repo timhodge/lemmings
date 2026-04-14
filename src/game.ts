@@ -22,6 +22,9 @@ export class Game {
   private selectedAbility: AbilityType | null = null;
   private abilityInventory: Map<AbilityType, number> = new Map();
   private running = false;
+  private hoveredLemming: Lemming | null = null;
+  private mouseX = -1;
+  private mouseY = -1;
   private animFrameId = 0;
   private gameState: GameState = 'playing';
   private speed = 1;
@@ -154,29 +157,47 @@ export class Game {
     }
   }
 
+  private findLemmingAt(px: number, py: number): Lemming | null {
+    let closest: Lemming | null = null;
+    let closestDist = 20;
+    for (const lem of this.lemmings) {
+      if (!lem.isActive) continue;
+      const dx = lem.x - px;
+      const dy = (lem.y - 5) - py;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestDist) {
+        closest = lem;
+        closestDist = dist;
+      }
+    }
+    return closest;
+  }
+
+  private canvasCoords(e: MouseEvent): [number, number] {
+    const rect = this.canvas.getBoundingClientRect();
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
+    return [
+      (e.clientX - rect.left) * scaleX,
+      (e.clientY - rect.top) * scaleY,
+    ];
+  }
+
   private setupInput(): void {
+    this.canvas.addEventListener('mousemove', (e) => {
+      [this.mouseX, this.mouseY] = this.canvasCoords(e);
+      this.hoveredLemming = this.selectedAbility ? this.findLemmingAt(this.mouseX, this.mouseY) : null;
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.hoveredLemming = null;
+    });
+
     this.canvas.addEventListener('click', (e) => {
       if (!this.selectedAbility || this.gameState !== 'playing') return;
 
-      const rect = this.canvas.getBoundingClientRect();
-      const scaleX = CANVAS_WIDTH / rect.width;
-      const scaleY = CANVAS_HEIGHT / rect.height;
-      const clickX = (e.clientX - rect.left) * scaleX;
-      const clickY = (e.clientY - rect.top) * scaleY;
-
-      let closest: Lemming | null = null;
-      let closestDist = 15;
-
-      for (const lem of this.lemmings) {
-        if (!lem.isActive) continue;
-        const dx = lem.x - clickX;
-        const dy = (lem.y - 5) - clickY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < closestDist) {
-          closest = lem;
-          closestDist = dist;
-        }
-      }
+      const [clickX, clickY] = this.canvasCoords(e);
+      const closest = this.findLemmingAt(clickX, clickY);
 
       if (closest && closest.canAssign(this.selectedAbility)) {
         const remaining = this.abilityInventory.get(this.selectedAbility) ?? 0;
@@ -349,6 +370,17 @@ export class Game {
     // Draw lemmings
     for (const lem of this.lemmings) {
       lem.draw(this.ctx);
+    }
+
+    // Draw selection highlight
+    if (this.hoveredLemming && this.hoveredLemming.isActive && this.selectedAbility) {
+      const hx = Math.floor(this.hoveredLemming.x);
+      const hy = Math.floor(this.hoveredLemming.y);
+      const canAssign = this.hoveredLemming.canAssign(this.selectedAbility) &&
+        (this.abilityInventory.get(this.selectedAbility) ?? 0) > 0;
+      this.ctx.strokeStyle = canAssign ? '#ffffff' : '#ff4444';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(hx - 6, hy - 14, 12, 16);
     }
 
     // Draw particles

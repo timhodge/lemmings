@@ -11,7 +11,7 @@ const BUILD_STEP_WIDTH = 6;
 const BUILD_STEP_HEIGHT = 2;
 const MAX_BUILD_STEPS = 12;
 const EXPLODE_COUNTDOWN = 300; // 5 seconds at 60fps
-const EXPLODE_RADIUS = 20;
+const EXPLODE_RADIUS = 12;
 
 export type LemmingState =
   | 'walking'
@@ -75,7 +75,7 @@ export class Lemming {
 
   canAssign(ability: AbilityType): boolean {
     if (!this.isActive) return false;
-    if (this.state === 'blocking') return false;
+    if (this.state === 'blocking' && ability !== 'exploder') return false;
     if (ability === 'climber') return !this.isClimber;
     if (ability === 'floater') return !this.isFloater;
     if (ability === 'exploder') return this.state !== 'exploding';
@@ -309,7 +309,7 @@ export class Lemming {
 
   private updateBuilding(terrain: Terrain): void {
     this.buildTimer++;
-    if (this.buildTimer < 10) return;
+    if (this.buildTimer < 30) return;
     this.buildTimer = 0;
 
     this.buildCount++;
