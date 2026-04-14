@@ -1,65 +1,88 @@
 import type { LevelData } from '../types';
 
-/** Level 8: The Gauntlet - Uses every ability */
+/** Level 8: The Gauntlet - Uses every ability.
+ *
+ * Left-to-right obstacle course. One main corridor elevation.
+ * Scouts solve each obstacle, crowd follows through the carved path.
+ *
+ * Flow: Spawn -> dig floor -> bash 3 walls -> build gap ->
+ *       explode thick wall -> mine through ramp -> walk to exit
+ *
+ * All top-to-top gaps <= 45px.
+ */
 const level: LevelData = {
   name: '8. The Gauntlet',
   terrainColor: '#6a6a6a',
   backgroundColor: '#0a0a1a',
-  spawnX: 60,
-  spawnY: 55,
-  exitX: 740,
-  exitY: 449,
+  spawnX: 55,
+  spawnY: 195,
+  exitX: 755,
+  exitY: 249,
   lemmingCount: 20,
   saveRequired: 12,
   spawnInterval: 70,
   abilities: {
     digger: 3,
-    basher: 3,
-    builder: 6,
-    blocker: 2,
-    climber: 5,
-    miner: 2,
-    floater: 5,
-    exploder: 2,
+    basher: 5,
+    builder: 8,
+    blocker: 3,
+    miner: 3,
+    exploder: 4,
+    climber: 2,
+    floater: 2,
   },
   buildTerrain(ctx, w, h) {
     ctx.fillStyle = this.terrainColor;
 
-    // === Section 1: Spawn + dig down ===
-    ctx.fillRect(20, 65, 140, 12);  // Spawn platform
-    ctx.fillRect(20, 30, 12, 47);    // Left wall
-    ctx.fillRect(148, 30, 12, 47);   // Right wall
-    ctx.fillRect(20, 77, 140, 30);   // Thick floor to dig through
+    // Main corridor is at y=250. Everything feeds into this.
 
-    // === Section 2: Corridor with walls to bash ===
-    ctx.fillRect(20, 170, 300, 12);  // Corridor floor
-    ctx.fillRect(20, 120, 300, 12);  // Corridor ceiling
-    ctx.fillRect(20, 120, 12, 62);   // Left wall
+    // === SECTION 1: Spawn + Dig ===
+    // Spawn at y=205, dig through floor, drop 45px to corridor at y=250
+    ctx.fillRect(20, 205, 100, 12);    // Spawn surface
+    ctx.fillRect(20, 170, 12, 47);     // Left wall
+    ctx.fillRect(108, 170, 12, 47);    // Right wall
+    ctx.fillRect(20, 217, 100, 20);    // Thick floor to dig through
+
+    // === SECTION 2: Bash Corridor ===
+    // Corridor at y=250 with 3 walls
+    ctx.fillRect(20, 250, 340, 12);    // Corridor floor
+    ctx.fillRect(20, 220, 12, 42);     // Left back wall
 
     // Bash walls
-    ctx.fillRect(120, 132, 20, 38);
-    ctx.fillRect(230, 132, 20, 38);
+    ctx.fillRect(100, 220, 20, 30);
+    ctx.fillRect(190, 220, 20, 30);
+    ctx.fillRect(280, 220, 20, 30);
 
-    // === Section 3: Gap to build across ===
-    // Floor continues at 320, gap until 430
-    ctx.fillRect(420, 170, 60, 12);  // Landing pad
+    // === SECTION 3: Build Gap ===
+    // 30px gap to bridge
+    ctx.fillRect(400, 250, 60, 12);    // Landing
 
-    // === Section 4: Thick wall to explode ===
-    ctx.fillRect(480, 100, 60, 82);
+    // === SECTION 4: Explode Wall ===
+    // 50px thick wall, can't bash through
+    ctx.fillRect(460, 215, 50, 47);
 
-    // === Section 5: Platform requiring climbing ===
-    ctx.fillRect(540, 170, 140, 12);
-    // Wall to climb
-    ctx.fillRect(668, 80, 12, 102);
-    ctx.fillRect(668, 80, 120, 12);  // Top platform
+    // Platform after wall
+    ctx.fillRect(510, 250, 60, 12);
 
-    // === Section 6: Long drop - need floaters ===
-    // Exit platform
-    ctx.fillRect(680, 450, 110, 12);
-    ctx.fillRect(778, 420, 12, 42);  // Right wall
+    // === SECTION 5: Mine Through Ramp ===
+    // Solid ramp sitting on the corridor. Miner digs diagonally through.
+    // After mining, there's a tunnel the crowd walks through.
+    ctx.fillRect(570, 220, 100, 42);   // Solid block (fills corridor height)
+
+    // === SECTION 6: Exit ===
+    // Platform continues to exit
+    ctx.fillRect(670, 250, 120, 12);
+    ctx.fillRect(778, 220, 12, 42);    // Right wall
 
     // Ground (death)
     ctx.fillRect(0, h - 8, w, 8);
+
+    // Decorative supports
+    ctx.fillStyle = '#4a4a5a';
+    ctx.fillRect(80, 262, 8, h - 270);
+    ctx.fillRect(250, 262, 8, h - 270);
+    ctx.fillRect(450, 262, 8, h - 270);
+    ctx.fillRect(700, 262, 8, h - 270);
   },
 };
 
