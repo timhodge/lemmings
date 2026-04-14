@@ -42,6 +42,7 @@ export class Lemming {
   // Ability timers
   digTimer = 0;
   bashTimer = 0;
+  buildTimer = 0;
   buildCount = 0;
   mineTimer = 0;
   explodeTimer = 0;
@@ -94,6 +95,7 @@ export class Lemming {
       case 'builder':
         this.state = 'building';
         this.buildCount = 0;
+        this.buildTimer = 0;
         break;
       case 'blocker':
         this.state = 'blocking';
@@ -306,6 +308,10 @@ export class Lemming {
   }
 
   private updateBuilding(terrain: Terrain): void {
+    this.buildTimer++;
+    if (this.buildTimer < 10) return;
+    this.buildTimer = 0;
+
     this.buildCount++;
     if (this.buildCount > MAX_BUILD_STEPS) {
       this.state = 'walking';
