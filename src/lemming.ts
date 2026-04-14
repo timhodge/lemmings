@@ -1,5 +1,6 @@
 import type { AbilityType } from './types';
 import type { Terrain } from './terrain';
+import { drawSprite, getSpriteForState } from './sprites';
 
 const GRAVITY = 1;
 const WALK_SPEED = 0.5;
@@ -351,128 +352,28 @@ export class Lemming {
       ctx.fillStyle = '#ff4444';
       ctx.font = 'bold 8px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(String(secondsLeft), x, y - LEMMING_HEIGHT - 4);
+      ctx.fillText(String(secondsLeft), x, y - 14);
 
-      // Flash body red as time runs out
+      // Flash red when almost exploding
       if (this.explodeTimer < 60 && this.animFrame % 2 === 0) {
-        this.drawBody(ctx, x, y, '#ff2222', '#ff8800');
-        return;
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#ff2222';
+        ctx.fillRect(x - 4, y - 12, 8, 12);
+        ctx.globalAlpha = 1;
       }
     }
 
-    this.drawBody(ctx, x, y, '#4040ff', '#00cc00');
-  }
-
-  private drawBody(ctx: CanvasRenderingContext2D, x: number, y: number, bodyColor: string, hairColor: string): void {
-    const h = LEMMING_HEIGHT;
-
-    // Shadow/outline
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(x - 3, y - h - 1, 6, h + 2);
-
-    // Head (hair)
-    ctx.fillStyle = hairColor;
-    ctx.fillRect(x - 2, y - h, 4, 3);
-
-    // Face
-    ctx.fillStyle = '#ffcc88';
-    ctx.fillRect(x - 1, y - h + 2, 2, 2);
-
-    // Body
-    ctx.fillStyle = bodyColor;
-    ctx.fillRect(x - 2, y - h + 4, 4, 4);
-
-    // Arms based on state
-    switch (this.state) {
-      case 'blocking': {
-        // Arms out to sides
-        ctx.fillRect(x - 4, y - h + 4, 2, 2);
-        ctx.fillRect(x + 2, y - h + 4, 2, 2);
-        // Stop sign indicator
-        ctx.fillStyle = '#ff4444';
-        ctx.fillRect(x - 3, y - h - 2, 6, 1);
-        break;
-      }
-      case 'digging': {
-        // Bent down with pickaxe
-        const pickOffset = this.animFrame < 2 ? 0 : 1;
-        ctx.fillStyle = '#aa8844';
-        ctx.fillRect(x + (this.direction * 2), y - 2 + pickOffset, 2, 3);
-        break;
-      }
-      case 'bashing': {
-        // Horizontal swing
-        const swingX = this.direction === 1 ? x + 2 : x - 4;
-        const swingOffset = this.animFrame % 2;
-        ctx.fillStyle = '#aa8844';
-        ctx.fillRect(swingX, y - h + 4 + swingOffset, 3, 2);
-        break;
-      }
-      case 'building': {
-        // Carrying brick
-        ctx.fillStyle = '#aa8844';
-        const brickDir = this.direction === 1 ? x + 2 : x - 4;
-        ctx.fillRect(brickDir, y - h + 5, 3, 2);
-        ctx.fillStyle = '#cc9955';
-        ctx.fillRect(brickDir, y - h + 3, 3, 2);
-        break;
-      }
-      case 'climbing': {
-        // Arms up against wall
-        ctx.fillRect(x + this.direction * 2, y - h + 2, 1, 3);
-        ctx.fillRect(x + this.direction * 2, y - h + 5 + (this.animFrame % 2), 1, 2);
-        break;
-      }
-      case 'mining': {
-        // Diagonal pickaxe
-        ctx.fillStyle = '#aa8844';
-        const mx = this.direction === 1 ? x + 2 : x - 3;
-        ctx.fillRect(mx, y - 2, 2, 2);
-        break;
-      }
-      default: {
-        // Walking/falling/floating - one arm forward
-        if (this.direction === 1) {
-          ctx.fillRect(x + 2, y - h + 5, 2, 2);
-        } else {
-          ctx.fillRect(x - 4, y - h + 5, 2, 2);
-        }
-      }
+    // Use sprite system
+    const spriteInfo = getSpriteForState(this.state, this.animFrame, this.isFloater);
+    if (spriteInfo) {
+      const [spriteName, frameIdx] = spriteInfo;
+      drawSprite(ctx, spriteName, frameIdx, x, y, this.direction === -1);
     }
 
-    // Legs
-    ctx.fillStyle = bodyColor;
-    if (this.state === 'walking' || this.state === 'exploding') {
-      const legOffset = this.animFrame < 2 ? 1 : -1;
-      ctx.fillRect(x - 2 + legOffset, y - 2, 2, 2);
-      ctx.fillRect(x + legOffset, y - 2, 2, 2);
-      // Feet
-      ctx.fillStyle = '#333366';
-      ctx.fillRect(x - 1 + legOffset, y, 1, 1);
-      ctx.fillRect(x + 1 - legOffset, y, 1, 1);
-    } else if (this.state === 'falling') {
-      ctx.fillRect(x - 2, y - 2, 2, 2);
-      ctx.fillRect(x, y - 2, 2, 2);
-    } else {
-      ctx.fillRect(x - 2, y - 2, 4, 2);
-    }
-
-    // Floater umbrella
-    if (this.isFloater && (this.state === 'floating')) {
-      ctx.fillStyle = '#ff88ff';
-      // Umbrella canopy
-      ctx.fillRect(x - 5, y - h - 5, 10, 1);
-      ctx.fillRect(x - 4, y - h - 4, 8, 1);
-      ctx.fillRect(x - 3, y - h - 3, 6, 1);
-      // Handle
-      ctx.fillStyle = '#884488';
-      ctx.fillRect(x, y - h - 2, 1, 2);
-    }
-
-    // Climber indicator (small yellow mark on head)
+    // Climber indicator (yellow dot on head) when not climbing
     if (this.isClimber && this.state !== 'climbing') {
       ctx.fillStyle = '#ffff00';
-      ctx.fillRect(x - 1, y - h - 1, 2, 1);
+      ctx.fillRect(x - 1, y - 12, 2, 1);
     }
   }
 }
