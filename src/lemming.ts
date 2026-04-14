@@ -231,7 +231,8 @@ export class Lemming {
     let canWalk = false;
     let newY = this.y;
 
-    for (let step = 0; step <= 2; step++) {
+    // Check up to 4px up for slope climbing (handles stairs + miner dips)
+    for (let step = 0; step <= 4; step++) {
       if (!terrain.isSolid(nextX, this.y - step)) {
         canWalk = true;
         newY = this.y - step;
@@ -326,9 +327,14 @@ export class Lemming {
       this.state = 'walking';
       return;
     }
-    // Check for ceiling before placing step
+    // Check for wall ahead or ceiling before placing step
     const nextY = this.y - BUILD_STEP_HEIGHT;
-    if (terrain.isSolid(this.x, nextY - LEMMING_HEIGHT)) {
+    const nextX = this.x + this.direction * (BUILD_STEP_WIDTH / 2);
+    const wallAhead = terrain.isSolid(nextX + this.direction * 4, this.y) ||
+                      terrain.isSolid(nextX + this.direction * 4, this.y - 5);
+    const ceilingAbove = terrain.isSolid(this.x, nextY - LEMMING_HEIGHT);
+    if (wallAhead || ceilingAbove) {
+      this.direction *= -1;
       this.state = 'walking';
       return;
     }
@@ -340,7 +346,7 @@ export class Lemming {
 
   private updateMining(terrain: Terrain): void {
     this.mineTimer++;
-    if (this.mineTimer < 6) return;
+    if (this.mineTimer < 30) return;
     this.mineTimer = 0;
 
     // Check ahead and below for terrain to mine (look past the last cleared area)
