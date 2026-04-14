@@ -2,11 +2,11 @@ import type { AbilityType } from './types';
 import type { Terrain } from './terrain';
 import { drawSprite, getSpriteForState } from './sprites';
 
-const GRAVITY = 1;
-const WALK_SPEED = 0.5;
+const GRAVITY = 0.5;
+const WALK_SPEED = 0.25;
 const MAX_FALL = 60;
 const LEMMING_HEIGHT = 10;
-const CLIMB_SPEED = 0.5;
+const CLIMB_SPEED = 0.25;
 const BUILD_STEP_WIDTH = 6;
 const BUILD_STEP_HEIGHT = 2;
 const MAX_BUILD_STEPS = 12;

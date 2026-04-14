@@ -11,7 +11,7 @@ const level: LevelData = {
   exitY: 450,
   lemmingCount: 15,
   saveRequired: 12,
-  spawnInterval: 40,
+  spawnInterval: 70,
   abilities: {
     floater: 15,
     digger: 3,
