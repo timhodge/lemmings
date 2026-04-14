@@ -14,7 +14,7 @@ const level: LevelData = {
   spawnInterval: 90,
   abilities: {
     climber: 12,
-    floater: 5,
+    builder: 5,
     blocker: 2,
   },
   buildTerrain(ctx, w, h) {
