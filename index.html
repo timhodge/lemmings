@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lemmings</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        background: #1a1a2e;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-family: 'Courier New', monospace;
+        color: #e0e0e0;
+      }
+      #game-container {
+        position: relative;
+        border: 2px solid #444;
+        background: #000;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+      #toolbar {
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        background: #2a2a3e;
+        border: 2px solid #444;
+        border-top: none;
+      }
+      .ability-btn {
+        padding: 6px 12px;
+        background: #3a3a5e;
+        border: 2px solid #555;
+        color: #e0e0e0;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        cursor: pointer;
+        min-width: 70px;
+        text-align: center;
+      }
+      .ability-btn:hover { background: #4a4a6e; }
+      .ability-btn.active { background: #6a4a8e; border-color: #8a6aae; }
+      .ability-btn .count { display: block; font-size: 16px; font-weight: bold; }
+      #status-bar {
+        display: flex;
+        gap: 24px;
+        padding: 8px;
+        background: #2a2a3e;
+        border: 2px solid #444;
+        border-bottom: none;
+        font-size: 14px;
+        width: 100%;
+        justify-content: center;
+      }
+      #status-bar span { white-space: nowrap; }
+      .label { color: #888; }
+    </style>
+  </head>
+  <body>
+    <div id="status-bar">
+      <span><span class="label">OUT:</span> <span id="out-count">0</span></span>
+      <span><span class="label">SAVED:</span> <span id="saved-count">0</span></span>
+      <span><span class="label">NEEDED:</span> <span id="needed-count">0</span></span>
+      <span><span class="label">RATE:</span> <span id="spawn-rate">50</span></span>
+    </div>
+    <div id="game-container">
+      <canvas id="game"></canvas>
+    </div>
+    <div id="toolbar"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
