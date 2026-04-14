@@ -294,18 +294,24 @@ export class Lemming {
     if (this.bashTimer < 4) return;
     this.bashTimer = 0;
 
-    const bashX = this.direction === 1 ? this.x + 2 : this.x - 6;
+    // Check for terrain anywhere ahead within bash reach (8px)
+    const lookAhead = this.direction === 1 ? this.x + 1 : this.x - 8;
     let hasTerrain = false;
-    for (let y = this.y - LEMMING_HEIGHT; y <= this.y; y++) {
-      if (terrain.isSolid(bashX + (this.direction === 1 ? 2 : 0), y)) {
-        hasTerrain = true;
-        break;
+    for (let checkX = lookAhead; checkX < lookAhead + 8; checkX++) {
+      for (let y = this.y - LEMMING_HEIGHT; y <= this.y; y++) {
+        if (terrain.isSolid(checkX, y)) {
+          hasTerrain = true;
+          break;
+        }
       }
+      if (hasTerrain) break;
     }
     if (!hasTerrain) {
       this.state = 'walking';
       return;
     }
+    // Clear a strip in front
+    const bashX = this.direction === 1 ? Math.floor(this.x) + 1 : Math.floor(this.x) - 4;
     terrain.removeRect(bashX, this.y - LEMMING_HEIGHT, 4, LEMMING_HEIGHT + 1);
     this.x += this.direction * WALK_SPEED;
   }
