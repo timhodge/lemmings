@@ -8,7 +8,7 @@ const level: LevelData = {
   spawnX: 60,
   spawnY: 55,
   exitX: 740,
-  exitY: 440,
+  exitY: 449,
   lemmingCount: 20,
   saveRequired: 12,
   spawnInterval: 70,
