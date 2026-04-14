@@ -46,6 +46,7 @@ export class Lemming {
   buildCount = 0;
   mineTimer = 0;
   explodeTimer = 0;
+  explodeInPlace = false;
 
   // Persistent abilities
   isClimber = false;
@@ -114,6 +115,7 @@ export class Lemming {
         }
         break;
       case 'exploder':
+        this.explodeInPlace = this.state === 'blocking';
         this.state = 'exploding';
         this.explodeTimer = EXPLODE_COUNTDOWN;
         break;
@@ -138,12 +140,13 @@ export class Lemming {
         this.state = 'exploded';
         return;
       }
-      // While counting down, walk normally but also handle falling
-      if (!terrain.isSolid(this.x, this.y) && !terrain.isSolid(this.x, this.y + 1)) {
-        // Fall while exploding
-        this.y += GRAVITY;
-      } else {
-        this.updateWalking(terrain);
+      // While counting down, stay put if was a blocker, otherwise walk
+      if (!this.explodeInPlace) {
+        if (!terrain.isSolid(this.x, this.y) && !terrain.isSolid(this.x, this.y + 1)) {
+          this.y += GRAVITY;
+        } else {
+          this.updateWalking(terrain);
+        }
       }
     } else {
       switch (this.state) {
