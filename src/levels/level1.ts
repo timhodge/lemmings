@@ -1,56 +1,48 @@
 import type { LevelData } from '../types';
 
-const level1: LevelData = {
-  name: 'Just Dig!',
+/** Level 1: Just Dig! - Introduction to digging. Dig straight down through 4 layers. */
+const level: LevelData = {
+  name: '1. Just Dig!',
   terrainColor: '#5a8a3a',
-  spawnX: 100,
-  spawnY: 40,
-  exitX: 700,
-  exitY: 390,
+  spawnX: 400,
+  spawnY: 50,
+  exitX: 400,
+  exitY: 430,
   lemmingCount: 10,
   saveRequired: 8,
   spawnInterval: 60,
   abilities: {
     digger: 10,
-    basher: 5,
-    builder: 5,
-    blocker: 2,
-    climber: 2,
-    miner: 3,
-    floater: 2,
   },
-  buildTerrain(ctx, w, h) {
-    // Ground platform
-    ctx.fillStyle = this.terrainColor;
-    ctx.fillRect(0, h - 20, w, 20);
+  buildTerrain(ctx, _w, _h) {
+    const c = this.terrainColor;
+    ctx.fillStyle = c;
 
-    // Starting platform (elevated, left side)
-    ctx.fillRect(50, 60, 120, 15);
+    // Spawn platform with walls to contain lemmings
+    ctx.fillRect(280, 60, 240, 15);
+    // Left wall
+    ctx.fillRect(280, 20, 15, 55);
+    // Right wall
+    ctx.fillRect(505, 20, 15, 55);
 
-    // Middle platform with gap they need to bridge or dig through
-    ctx.fillRect(200, 150, 250, 15);
+    // Layer 2 - wider, walls on sides
+    ctx.fillRect(230, 150, 340, 15);
+    ctx.fillRect(230, 120, 15, 45);
+    ctx.fillRect(555, 120, 15, 45);
 
-    // Vertical wall they can bash through
-    ctx.fillRect(300, 165, 20, 100);
+    // Layer 3
+    ctx.fillRect(180, 240, 440, 15);
+    ctx.fillRect(180, 210, 15, 45);
+    ctx.fillRect(605, 210, 15, 45);
 
-    // Lower platform
-    ctx.fillRect(350, 260, 200, 15);
-
-    // Pillar near exit (need to dig or go around)
-    ctx.fillRect(580, 200, 20, 200);
+    // Layer 4
+    ctx.fillRect(130, 330, 540, 15);
+    ctx.fillRect(130, 300, 15, 45);
+    ctx.fillRect(655, 300, 15, 45);
 
     // Exit platform
-    ctx.fillRect(640, 400, 120, 15);
-
-    // Ramp terrain
-    for (let i = 0; i < 80; i++) {
-      ctx.fillRect(200 + i, 150 - i * 0.5, 2, 2);
-    }
-
-    // Some decorative terrain bumps
-    ctx.fillRect(100, h - 35, 60, 15);
-    ctx.fillRect(400, h - 50, 80, 30);
+    ctx.fillRect(80, 440, 640, 15);
   },
 };
 
-export default level1;
+export default level;

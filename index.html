@@ -15,15 +15,20 @@
         min-height: 100vh;
         font-family: 'Courier New', monospace;
         color: #e0e0e0;
+        overflow: hidden;
       }
       #game-container {
         position: relative;
         border: 2px solid #444;
         background: #000;
+        width: 800px;
+        height: 500px;
       }
       canvas {
         display: block;
         image-rendering: pixelated;
+        width: 800px;
+        height: 500px;
       }
       #toolbar {
         display: flex;
@@ -32,47 +37,125 @@
         background: #2a2a3e;
         border: 2px solid #444;
         border-top: none;
+        min-height: 52px;
+        flex-wrap: wrap;
+        justify-content: center;
       }
       .ability-btn {
-        padding: 6px 12px;
+        padding: 4px 10px;
         background: #3a3a5e;
         border: 2px solid #555;
         color: #e0e0e0;
         font-family: 'Courier New', monospace;
-        font-size: 12px;
+        font-size: 11px;
         cursor: pointer;
-        min-width: 70px;
+        min-width: 60px;
         text-align: center;
+        transition: background 0.15s;
       }
       .ability-btn:hover { background: #4a4a6e; }
       .ability-btn.active { background: #6a4a8e; border-color: #8a6aae; }
-      .ability-btn .count { display: block; font-size: 16px; font-weight: bold; }
+      .ability-btn .count { display: block; font-size: 14px; font-weight: bold; }
+      .control-btn { background: #3a4a3e; border-color: #4a5a4e; }
+      .control-btn:hover { background: #4a5a4e; }
+      .control-btn.active { background: #5a6a5e; }
+      .nuke-btn { background: #5a3a3a !important; border-color: #6a4a4a !important; }
+      .nuke-btn:hover { background: #6a4a4a !important; }
       #status-bar {
         display: flex;
-        gap: 24px;
-        padding: 8px;
+        gap: 16px;
+        padding: 8px 16px;
         background: #2a2a3e;
         border: 2px solid #444;
         border-bottom: none;
-        font-size: 14px;
-        width: 100%;
+        font-size: 13px;
+        width: 804px;
         justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
       }
       #status-bar span { white-space: nowrap; }
       .label { color: #888; }
+      #level-name {
+        color: #aaccff;
+        font-weight: bold;
+        flex-basis: 100%;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      /* Level select */
+      #level-select {
+        display: none;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 40px 60px;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        align-content: start;
+      }
+      .level-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px;
+        background: #2a2a4e;
+        border: 2px solid #444;
+        color: #e0e0e0;
+        font-family: 'Courier New', monospace;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .level-btn:hover:not(.locked) {
+        background: #3a3a6e;
+        border-color: #6a6aae;
+        transform: translateY(-2px);
+      }
+      .level-btn.locked {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .level-btn.completed {
+        border-color: #4a8a4a;
+      }
+      .level-number {
+        font-size: 28px;
+        font-weight: bold;
+        color: #6a8aee;
+      }
+      .locked .level-number { color: #666; }
+      .completed .level-number { color: #4aea4a; }
+      .level-title {
+        font-size: 14px;
+        margin: 4px 0;
+      }
+      .level-info {
+        font-size: 11px;
+        color: #888;
+      }
+
+      /* Keyboard hints */
+      #hints {
+        font-size: 11px;
+        color: #555;
+        margin-top: 8px;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
     <div id="status-bar">
-      <span><span class="label">OUT:</span> <span id="out-count">0</span></span>
-      <span><span class="label">SAVED:</span> <span id="saved-count">0</span></span>
-      <span><span class="label">NEEDED:</span> <span id="needed-count">0</span></span>
-      <span><span class="label">RATE:</span> <span id="spawn-rate">50</span></span>
+      <span id="level-name">Lemmings</span>
+      <span><span class="label">OUT:</span> <span id="out-count">-</span></span>
+      <span><span class="label">SAVED:</span> <span id="saved-count">-</span></span>
+      <span><span class="label">NEEDED:</span> <span id="needed-count">-</span></span>
     </div>
     <div id="game-container">
       <canvas id="game"></canvas>
     </div>
     <div id="toolbar"></div>
+    <div id="hints">1-8: select ability | SPACE: pause | +: speed | click lemming to assign</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

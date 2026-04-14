@@ -1,16 +1,20 @@
 import { Terrain } from './terrain';
 import { Lemming } from './lemming';
+import { ParticleSystem } from './particles';
 import type { AbilityType, LevelData } from './types';
 
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 500;
 
+type GameState = 'playing' | 'won' | 'lost' | 'paused';
+
 export class Game {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  private terrain: Terrain;
+  private terrain!: Terrain;
   private lemmings: Lemming[] = [];
-  private level: LevelData;
+  private particles = new ParticleSystem();
+  private level!: LevelData;
   private frameCount = 0;
   private spawnedCount = 0;
   private savedCount = 0;
@@ -19,46 +23,55 @@ export class Game {
   private abilityInventory: Map<AbilityType, number> = new Map();
   private running = false;
   private animFrameId = 0;
+  private gameState: GameState = 'playing';
+  private speed = 1;
+  private endTimer = 0;
 
-  // UI elements
-  private outEl: HTMLElement;
-  private savedEl: HTMLElement;
-  private neededEl: HTMLElement;
+  // Callbacks
+  onLevelComplete?: (saved: number, required: number, total: number) => void;
 
-  constructor(canvas: HTMLCanvasElement, level: LevelData) {
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.canvas.width = CANVAS_WIDTH;
     this.canvas.height = CANVAS_HEIGHT;
+    this.setupInput();
+  }
+
+  loadLevel(level: LevelData): void {
+    this.stop();
     this.level = level;
+    this.lemmings = [];
+    this.frameCount = 0;
+    this.spawnedCount = 0;
+    this.savedCount = 0;
+    this.deadCount = 0;
+    this.selectedAbility = null;
+    this.gameState = 'playing';
+    this.speed = 1;
+    this.endTimer = 0;
+    this.particles = new ParticleSystem();
+
     this.terrain = new Terrain(CANVAS_WIDTH, CANVAS_HEIGHT);
+    this.abilityInventory.clear();
 
-    this.outEl = document.getElementById('out-count')!;
-    this.savedEl = document.getElementById('saved-count')!;
-    this.neededEl = document.getElementById('needed-count')!;
-
-    this.neededEl.textContent = String(level.saveRequired);
-
-    // Initialize ability inventory
     for (const [ability, count] of Object.entries(level.abilities)) {
       this.abilityInventory.set(ability as AbilityType, count as number);
     }
 
-    // Build terrain
     const terrainCtx = this.terrain.getContext() as unknown as CanvasRenderingContext2D;
     level.buildTerrain(terrainCtx, CANVAS_WIDTH, CANVAS_HEIGHT);
     this.terrain.sync();
 
-    // Draw spawn and exit markers
     this.buildToolbar();
-    this.setupInput();
+    this.updateStatusBar();
   }
 
   private buildToolbar(): void {
     const toolbar = document.getElementById('toolbar')!;
     toolbar.innerHTML = '';
 
-    const abilities: AbilityType[] = ['climber', 'floater', 'blocker', 'basher', 'miner', 'digger', 'builder'];
+    const abilities: AbilityType[] = ['climber', 'floater', 'exploder', 'blocker', 'basher', 'miner', 'digger', 'builder'];
 
     for (const ability of abilities) {
       const count = this.abilityInventory.get(ability) ?? 0;
@@ -71,19 +84,79 @@ export class Game {
       btn.addEventListener('click', () => this.selectAbility(ability));
       toolbar.appendChild(btn);
     }
+
+    // Speed button
+    const speedBtn = document.createElement('button');
+    speedBtn.className = 'ability-btn control-btn';
+    speedBtn.id = 'speed-btn';
+    speedBtn.innerHTML = '<span class="count">1x</span>speed';
+    speedBtn.addEventListener('click', () => this.cycleSpeed());
+    toolbar.appendChild(speedBtn);
+
+    // Pause button
+    const pauseBtn = document.createElement('button');
+    pauseBtn.className = 'ability-btn control-btn';
+    pauseBtn.id = 'pause-btn';
+    pauseBtn.innerHTML = '<span class="count">||</span>pause';
+    pauseBtn.addEventListener('click', () => this.togglePause());
+    toolbar.appendChild(pauseBtn);
+
+    // Nuke button
+    const nukeBtn = document.createElement('button');
+    nukeBtn.className = 'ability-btn control-btn nuke-btn';
+    nukeBtn.innerHTML = '<span class="count">!</span>nuke';
+    nukeBtn.addEventListener('click', () => this.nuke());
+    toolbar.appendChild(nukeBtn);
   }
 
   private selectAbility(ability: AbilityType): void {
     this.selectedAbility = this.selectedAbility === ability ? null : ability;
-    document.querySelectorAll('.ability-btn').forEach((btn) => {
+    document.querySelectorAll('.ability-btn:not(.control-btn)').forEach((btn) => {
       const el = btn as HTMLElement;
       el.classList.toggle('active', el.dataset.ability === this.selectedAbility);
     });
   }
 
+  private cycleSpeed(): void {
+    if (this.speed === 1) this.speed = 2;
+    else if (this.speed === 2) this.speed = 4;
+    else this.speed = 1;
+    const btn = document.getElementById('speed-btn');
+    if (btn) btn.querySelector('.count')!.textContent = `${this.speed}x`;
+  }
+
+  private togglePause(): void {
+    if (this.gameState === 'paused') {
+      this.gameState = 'playing';
+      const btn = document.getElementById('pause-btn');
+      if (btn) {
+        btn.querySelector('.count')!.textContent = '||';
+        btn.classList.remove('active');
+      }
+    } else if (this.gameState === 'playing') {
+      this.gameState = 'paused';
+      const btn = document.getElementById('pause-btn');
+      if (btn) {
+        btn.querySelector('.count')!.textContent = '>';
+        btn.classList.add('active');
+      }
+    }
+  }
+
+  private nuke(): void {
+    if (this.gameState !== 'playing') return;
+    for (const lem of this.lemmings) {
+      if (lem.isActive && lem.state !== 'exploding') {
+        lem.assign('exploder');
+        // Stagger the countdowns slightly
+        lem.explodeTimer = 60 + Math.floor(Math.random() * 120);
+      }
+    }
+  }
+
   private setupInput(): void {
     this.canvas.addEventListener('click', (e) => {
-      if (!this.selectedAbility) return;
+      if (!this.selectedAbility || this.gameState !== 'playing') return;
 
       const rect = this.canvas.getBoundingClientRect();
       const scaleX = CANVAS_WIDTH / rect.width;
@@ -91,14 +164,13 @@ export class Game {
       const clickX = (e.clientX - rect.left) * scaleX;
       const clickY = (e.clientY - rect.top) * scaleY;
 
-      // Find closest active lemming to click
       let closest: Lemming | null = null;
-      let closestDist = 15; // max click distance
+      let closestDist = 15;
 
       for (const lem of this.lemmings) {
         if (!lem.isActive) continue;
         const dx = lem.x - clickX;
-        const dy = (lem.y - 5) - clickY; // center of body
+        const dy = (lem.y - 5) - clickY;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < closestDist) {
           closest = lem;
@@ -115,16 +187,51 @@ export class Game {
         }
       }
     });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'p':
+        case ' ':
+          e.preventDefault();
+          this.togglePause();
+          break;
+        case '+':
+        case '=':
+          this.cycleSpeed();
+          break;
+        case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': {
+          const abilities: AbilityType[] = ['climber', 'floater', 'exploder', 'blocker', 'basher', 'miner', 'digger', 'builder'];
+          const idx = parseInt(e.key) - 1;
+          if (idx < abilities.length) {
+            const ability = abilities[idx];
+            if ((this.abilityInventory.get(ability) ?? 0) > 0) {
+              this.selectAbility(ability);
+            }
+          }
+          break;
+        }
+      }
+    });
   }
 
   private updateToolbarCounts(): void {
-    document.querySelectorAll('.ability-btn').forEach((btn) => {
+    document.querySelectorAll('.ability-btn:not(.control-btn)').forEach((btn) => {
       const el = btn as HTMLElement;
       const ability = el.dataset.ability as AbilityType;
       const count = this.abilityInventory.get(ability) ?? 0;
       const countEl = el.querySelector('.count')!;
       countEl.textContent = String(count);
     });
+  }
+
+  private updateStatusBar(): void {
+    const activeCount = this.spawnedCount - this.savedCount - this.deadCount;
+    document.getElementById('out-count')!.textContent = String(activeCount);
+    document.getElementById('saved-count')!.textContent = String(this.savedCount);
+    document.getElementById('needed-count')!.textContent = String(this.level.saveRequired);
+    document.getElementById('level-name')!.textContent = this.level.name;
   }
 
   start(): void {
@@ -140,7 +247,12 @@ export class Game {
   private loop = (): void => {
     if (!this.running) return;
 
-    this.update();
+    for (let i = 0; i < this.speed; i++) {
+      if (this.gameState === 'playing') {
+        this.update();
+      }
+    }
+    this.particles.update();
     this.render();
     this.animFrameId = requestAnimationFrame(this.loop);
   };
@@ -157,18 +269,25 @@ export class Game {
 
     // Update all lemmings
     for (const lem of this.lemmings) {
-      const prevState = lem.state;
       lem.update(this.terrain, this.level.exitX, this.level.exitY);
 
-      if (lem.state === 'saved' && prevState !== 'saved') {
+      if (lem.justExploded) {
+        this.particles.explode(lem.x, lem.y);
+        this.deadCount++;
+      }
+      if (lem.justSaved) {
+        this.particles.sparkle(lem.x, lem.y);
         this.savedCount++;
       }
-      if ((lem.state === 'dead' || lem.state === 'splat') && prevState !== 'dead' && prevState !== 'splat') {
+      if (lem.justDied) {
+        if (lem.state === 'splat') {
+          this.particles.splat(lem.x, lem.y);
+        }
         this.deadCount++;
       }
 
-      // Blocker collision: other walkers bounce off blockers
-      if (lem.state === 'walking') {
+      // Blocker collision
+      if (lem.state === 'walking' || lem.state === 'exploding') {
         for (const other of this.lemmings) {
           if (other === lem || other.state !== 'blocking') continue;
           const dx = lem.x - other.x;
@@ -179,61 +298,127 @@ export class Game {
       }
     }
 
-    // Update UI
-    const activeCount = this.spawnedCount - this.savedCount - this.deadCount;
-    this.outEl.textContent = String(activeCount);
-    this.savedEl.textContent = String(this.savedCount);
+    this.updateStatusBar();
+
+    // Check end condition
+    if (this.spawnedCount >= this.level.lemmingCount && this.savedCount + this.deadCount >= this.spawnedCount) {
+      this.endTimer++;
+      if (this.endTimer > 60) {
+        this.gameState = this.savedCount >= this.level.saveRequired ? 'won' : 'lost';
+        this.onLevelComplete?.(this.savedCount, this.level.saveRequired, this.level.lemmingCount);
+      }
+    }
   }
 
   private render(): void {
-    // Clear
-    this.ctx.fillStyle = '#1a1a3e';
+    const bg = this.level?.backgroundColor ?? '#1a1a3e';
+    this.ctx.fillStyle = bg;
     this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw terrain
+    if (!this.terrain) return;
+
     this.terrain.drawTo(this.ctx);
 
-    // Draw spawn point
-    this.ctx.fillStyle = '#ffff00';
-    this.ctx.fillRect(this.level.spawnX - 5, this.level.spawnY - 15, 10, 3);
-    this.ctx.fillRect(this.level.spawnX - 1, this.level.spawnY - 12, 2, 12);
+    // Draw spawn trapdoor
+    this.ctx.fillStyle = '#888888';
+    this.ctx.fillRect(this.level.spawnX - 8, this.level.spawnY - 8, 16, 4);
+    this.ctx.fillStyle = '#666666';
+    this.ctx.fillRect(this.level.spawnX - 6, this.level.spawnY - 6, 12, 3);
+    // Trapdoor doors
+    this.ctx.fillStyle = '#aaaaaa';
+    ctx_drawTriangle(this.ctx, this.level.spawnX - 4, this.level.spawnY - 4, this.level.spawnX, this.level.spawnY - 1, this.level.spawnX - 4, this.level.spawnY - 1);
+    ctx_drawTriangle(this.ctx, this.level.spawnX + 4, this.level.spawnY - 4, this.level.spawnX, this.level.spawnY - 1, this.level.spawnX + 4, this.level.spawnY - 1);
 
-    // Draw exit
-    this.ctx.fillStyle = '#00ffff';
-    this.ctx.fillRect(this.level.exitX - 6, this.level.exitY - 12, 12, 12);
-    this.ctx.fillStyle = '#008888';
-    this.ctx.fillRect(this.level.exitX - 4, this.level.exitY - 10, 8, 10);
-    this.ctx.fillStyle = '#00ffff';
-    this.ctx.fillRect(this.level.exitX - 2, this.level.exitY - 6, 4, 6);
+    // Draw exit door
+    this.ctx.fillStyle = '#444488';
+    this.ctx.fillRect(this.level.exitX - 7, this.level.exitY - 14, 14, 14);
+    this.ctx.fillStyle = '#6666aa';
+    this.ctx.fillRect(this.level.exitX - 5, this.level.exitY - 12, 10, 12);
+    // Door opening
+    this.ctx.fillStyle = '#000033';
+    this.ctx.fillRect(this.level.exitX - 3, this.level.exitY - 8, 6, 8);
+    // Door arch
+    this.ctx.fillStyle = '#8888cc';
+    this.ctx.fillRect(this.level.exitX - 4, this.level.exitY - 9, 8, 1);
+    // Flag on top
+    this.ctx.fillStyle = '#00ff88';
+    this.ctx.fillRect(this.level.exitX, this.level.exitY - 18, 1, 6);
+    this.ctx.fillRect(this.level.exitX + 1, this.level.exitY - 18, 4, 3);
 
     // Draw lemmings
     for (const lem of this.lemmings) {
       lem.draw(this.ctx);
     }
 
-    // Win/lose message
-    if (this.spawnedCount >= this.level.lemmingCount && this.savedCount + this.deadCount >= this.spawnedCount) {
+    // Draw particles
+    this.particles.draw(this.ctx);
+
+    // Pause overlay
+    if (this.gameState === 'paused') {
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      this.ctx.font = 'bold 36px "Courier New", monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.fillText('PAUSED', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      this.ctx.font = '14px "Courier New", monospace';
+      this.ctx.fillStyle = '#aaaaaa';
+      this.ctx.fillText('Press SPACE or P to resume', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 30);
+    }
+
+    // End screen
+    if (this.gameState === 'won' || this.gameState === 'lost') {
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       this.ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      this.ctx.font = '32px Courier New';
+      this.ctx.font = 'bold 32px "Courier New", monospace';
       this.ctx.textAlign = 'center';
 
-      if (this.savedCount >= this.level.saveRequired) {
+      if (this.gameState === 'won') {
         this.ctx.fillStyle = '#00ff88';
-        this.ctx.fillText(`LEVEL COMPLETE!`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+        this.ctx.fillText('LEVEL COMPLETE!', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 30);
       } else {
         this.ctx.fillStyle = '#ff4444';
-        this.ctx.fillText(`LEVEL FAILED`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+        this.ctx.fillText('LEVEL FAILED', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 30);
       }
 
-      this.ctx.font = '18px Courier New';
+      this.ctx.font = '16px "Courier New", monospace';
       this.ctx.fillStyle = '#cccccc';
       this.ctx.fillText(
         `Saved ${this.savedCount} of ${this.level.lemmingCount} (needed ${this.level.saveRequired})`,
         CANVAS_WIDTH / 2,
-        CANVAS_HEIGHT / 2 + 20
+        CANVAS_HEIGHT / 2 + 10
       );
+
+      this.ctx.font = '14px "Courier New", monospace';
+      this.ctx.fillStyle = '#888888';
+      if (this.gameState === 'won') {
+        this.ctx.fillText('Click NEXT to continue', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 40);
+      } else {
+        this.ctx.fillText('Click RETRY to try again', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 40);
+      }
     }
   }
+
+  getState(): GameState {
+    return this.gameState;
+  }
+
+  getSavedCount(): number {
+    return this.savedCount;
+  }
+}
+
+function ctx_drawTriangle(
+  ctx: CanvasRenderingContext2D,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  x3: number, y3: number
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineTo(x3, y3);
+  ctx.closePath();
+  ctx.fill();
 }

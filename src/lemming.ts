@@ -3,13 +3,14 @@ import type { Terrain } from './terrain';
 
 const GRAVITY = 1;
 const WALK_SPEED = 0.5;
-const MAX_FALL = 60; // fall distance before death
-const LEMMING_WIDTH = 6;
+const MAX_FALL = 60;
 const LEMMING_HEIGHT = 10;
 const CLIMB_SPEED = 0.5;
 const BUILD_STEP_WIDTH = 6;
 const BUILD_STEP_HEIGHT = 2;
 const MAX_BUILD_STEPS = 12;
+const EXPLODE_COUNTDOWN = 300; // 5 seconds at 60fps
+const EXPLODE_RADIUS = 20;
 
 export type LemmingState =
   | 'walking'
@@ -21,54 +22,64 @@ export type LemmingState =
   | 'climbing'
   | 'mining'
   | 'floating'
+  | 'exploding'
   | 'saved'
   | 'dead'
-  | 'splat';
+  | 'splat'
+  | 'exploded';
 
 export class Lemming {
   x: number;
   y: number;
-  direction: 1 | -1 = 1; // 1 = right, -1 = left
+  direction: 1 | -1 = 1;
   state: LemmingState = 'falling';
+  private prevState: LemmingState = 'falling';
   fallDistance = 0;
   animFrame = 0;
   animTimer = 0;
 
-  // Ability state
+  // Ability timers
   digTimer = 0;
   bashTimer = 0;
   buildCount = 0;
   mineTimer = 0;
+  explodeTimer = 0;
 
-  // Persistent abilities (survive state changes)
+  // Persistent abilities
   isClimber = false;
   isFloater = false;
-
-  // Colors for rendering
-  readonly bodyColor: string;
-  readonly hairColor: string;
 
   constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
-    this.bodyColor = '#4040ff';
-    this.hairColor = '#00cc00';
   }
 
   get isActive(): boolean {
-    return this.state !== 'dead' && this.state !== 'saved' && this.state !== 'splat';
+    return this.state !== 'dead' && this.state !== 'saved' && this.state !== 'splat' && this.state !== 'exploded';
   }
 
-  /** Check if an ability can be assigned */
+  get justExploded(): boolean {
+    return this.state === 'exploded' && this.prevState !== 'exploded';
+  }
+
+  get justSaved(): boolean {
+    return this.state === 'saved' && this.prevState !== 'saved';
+  }
+
+  get justDied(): boolean {
+    return (this.state === 'dead' || this.state === 'splat') &&
+      this.prevState !== 'dead' && this.prevState !== 'splat';
+  }
+
   canAssign(ability: AbilityType): boolean {
     if (!this.isActive) return false;
     if (this.state === 'blocking') return false;
     if (ability === 'climber') return !this.isClimber;
     if (ability === 'floater') return !this.isFloater;
+    if (ability === 'exploder') return this.state !== 'exploding';
     return true;
   }
 
-  /** Assign an ability */
   assign(ability: AbilityType): void {
     switch (ability) {
       case 'digger':
@@ -99,11 +110,15 @@ export class Lemming {
           this.state = 'floating';
         }
         break;
+      case 'exploder':
+        this.state = 'exploding';
+        this.explodeTimer = EXPLODE_COUNTDOWN;
+        break;
     }
   }
 
-  /** Update lemming for one frame */
   update(terrain: Terrain, exitX: number, exitY: number): void {
+    this.prevState = this.state;
     if (!this.isActive) return;
 
     this.animTimer++;
@@ -112,34 +127,45 @@ export class Lemming {
       this.animFrame = (this.animFrame + 1) % 4;
     }
 
-    switch (this.state) {
-      case 'falling':
-        this.updateFalling(terrain);
-        break;
-      case 'floating':
-        this.updateFloating(terrain);
-        break;
-      case 'walking':
-        this.updateWalking(terrain);
-        break;
-      case 'digging':
-        this.updateDigging(terrain);
-        break;
-      case 'bashing':
-        this.updateBashing(terrain);
-        break;
-      case 'building':
-        this.updateBuilding(terrain);
-        break;
-      case 'blocking':
-        // Blockers just stand there
-        break;
-      case 'climbing':
-        this.updateClimbing(terrain);
-        break;
-      case 'mining':
-        this.updateMining(terrain);
-        break;
+    // Exploder countdown runs on top of other states
+    if (this.state === 'exploding') {
+      this.explodeTimer--;
+      if (this.explodeTimer <= 0) {
+        terrain.removeCircle(this.x, this.y - 5, EXPLODE_RADIUS);
+        this.state = 'exploded';
+        return;
+      }
+      // While counting down, behave as a walker
+      this.updateWalking(terrain);
+    } else {
+      switch (this.state) {
+        case 'falling':
+          this.updateFalling(terrain);
+          break;
+        case 'floating':
+          this.updateFloating(terrain);
+          break;
+        case 'walking':
+          this.updateWalking(terrain);
+          break;
+        case 'digging':
+          this.updateDigging(terrain);
+          break;
+        case 'bashing':
+          this.updateBashing(terrain);
+          break;
+        case 'building':
+          this.updateBuilding(terrain);
+          break;
+        case 'blocking':
+          break;
+        case 'climbing':
+          this.updateClimbing(terrain);
+          break;
+        case 'mining':
+          this.updateMining(terrain);
+          break;
+      }
     }
 
     // Check exit
@@ -158,7 +184,6 @@ export class Lemming {
   }
 
   private updateFalling(terrain: Terrain): void {
-    // Check for ground below
     if (terrain.isSolid(this.x, this.y + 1)) {
       if (this.fallDistance > MAX_FALL) {
         this.state = 'splat';
@@ -168,11 +193,8 @@ export class Lemming {
       this.fallDistance = 0;
       return;
     }
-
     this.y += GRAVITY;
     this.fallDistance += GRAVITY;
-
-    // Switch to floating if we have that ability
     if (this.isFloater && this.fallDistance > 10) {
       this.state = 'floating';
     }
@@ -184,19 +206,16 @@ export class Lemming {
       this.fallDistance = 0;
       return;
     }
-    // Slow descent
     this.y += 0.3;
   }
 
   private updateWalking(terrain: Terrain): void {
-    // Check for ground
     if (!terrain.isSolid(this.x, this.y) && !terrain.isSolid(this.x, this.y + 1)) {
-      this.state = 'falling';
+      if (this.state !== 'exploding') this.state = 'falling';
       this.fallDistance = 0;
       return;
     }
 
-    // Walk up gentle slopes (check up to 2 pixels up)
     const nextX = this.x + this.direction * WALK_SPEED;
     let canWalk = false;
     let newY = this.y;
@@ -205,11 +224,6 @@ export class Lemming {
       if (!terrain.isSolid(nextX, this.y - step)) {
         canWalk = true;
         newY = this.y - step;
-        // Make sure there's ground under the new position
-        if (!terrain.isSolid(nextX, newY + 1) && !terrain.isSolid(nextX, newY)) {
-          // Walk off edge, let falling handle it
-          canWalk = true;
-        }
         break;
       }
     }
@@ -217,18 +231,16 @@ export class Lemming {
     if (canWalk) {
       this.x = nextX;
       this.y = newY;
-      // Snap to ground
       while (this.y < terrain.height - 1 && !terrain.isSolid(this.x, this.y + 1)) {
         this.y++;
         if (this.y - newY > 3) {
-          this.state = 'falling';
+          if (this.state !== 'exploding') this.state = 'falling';
           this.fallDistance = 0;
           return;
         }
       }
     } else {
-      // Hit a wall
-      if (this.isClimber) {
+      if (this.isClimber && this.state !== 'exploding') {
         this.state = 'climbing';
         return;
       }
@@ -238,24 +250,17 @@ export class Lemming {
 
   private updateClimbing(terrain: Terrain): void {
     const checkX = this.x + this.direction;
-
-    // Check if there's still a wall to climb
     if (!terrain.isSolid(checkX, this.y)) {
-      // Reached the top, step onto ledge
       this.x = checkX;
       this.state = 'walking';
       return;
     }
-
-    // Check if there's room above
     if (terrain.isSolid(this.x, this.y - 1)) {
-      // Bonked head, fall back
       this.direction *= -1;
       this.state = 'falling';
       this.fallDistance = 0;
       return;
     }
-
     this.y -= CLIMB_SPEED;
   }
 
@@ -264,15 +269,12 @@ export class Lemming {
     if (this.digTimer < 8) return;
     this.digTimer = 0;
 
-    // Check if there's terrain below to dig
     if (!terrain.isSolid(this.x, this.y + 1) && !terrain.isSolid(this.x - 2, this.y + 1) && !terrain.isSolid(this.x + 2, this.y + 1)) {
       this.state = 'falling';
       this.fallDistance = 0;
       return;
     }
-
-    // Remove terrain below
-    terrain.removeRect(this.x - LEMMING_WIDTH / 2 - 1, this.y, LEMMING_WIDTH + 2, 2);
+    terrain.removeRect(this.x - 4, this.y, 8, 2);
     this.y += 2;
   }
 
@@ -281,9 +283,7 @@ export class Lemming {
     if (this.bashTimer < 4) return;
     this.bashTimer = 0;
 
-    const bashX = this.direction === 1 ? this.x + 2 : this.x - 4;
-
-    // Check if there's terrain to bash
+    const bashX = this.direction === 1 ? this.x + 2 : this.x - 6;
     let hasTerrain = false;
     for (let y = this.y - LEMMING_HEIGHT; y <= this.y; y++) {
       if (terrain.isSolid(bashX + (this.direction === 1 ? 2 : 0), y)) {
@@ -291,13 +291,10 @@ export class Lemming {
         break;
       }
     }
-
     if (!hasTerrain) {
       this.state = 'walking';
       return;
     }
-
-    // Remove terrain in front
     terrain.removeRect(bashX, this.y - LEMMING_HEIGHT, 4, LEMMING_HEIGHT + 1);
     this.x += this.direction * WALK_SPEED;
   }
@@ -308,16 +305,10 @@ export class Lemming {
       this.state = 'walking';
       return;
     }
-
-    // Place a step
     const stepX = this.direction === 1 ? this.x : this.x - BUILD_STEP_WIDTH;
     terrain.addRect(stepX, this.y, BUILD_STEP_WIDTH, BUILD_STEP_HEIGHT, '#a08050');
-
-    // Move up and forward
     this.x += this.direction * (BUILD_STEP_WIDTH / 2);
     this.y -= BUILD_STEP_HEIGHT;
-
-    // Check if hit ceiling
     if (terrain.isSolid(this.x, this.y - LEMMING_HEIGHT)) {
       this.state = 'walking';
     }
@@ -328,28 +319,22 @@ export class Lemming {
     if (this.mineTimer < 6) return;
     this.mineTimer = 0;
 
-    // Diagonal dig
     const mineX = this.x + this.direction * 3;
     const mineY = this.y + 2;
-
-    // Check if there's terrain to mine
     if (!terrain.isSolid(mineX, mineY)) {
       this.state = 'falling';
       this.fallDistance = 0;
       return;
     }
-
     terrain.removeCircle(mineX, mineY, 5);
     this.x += this.direction * 2;
     this.y += 2;
   }
 
-  /** Draw the lemming */
   draw(ctx: CanvasRenderingContext2D): void {
-    if (this.state === 'dead') return;
+    if (this.state === 'dead' || this.state === 'exploded') return;
 
     if (this.state === 'splat') {
-      // Splat animation: just a small red mark
       ctx.fillStyle = '#ff0000';
       ctx.fillRect(this.x - 3, this.y - 1, 6, 2);
       return;
@@ -360,48 +345,134 @@ export class Lemming {
     const x = Math.floor(this.x);
     const y = Math.floor(this.y);
 
-    // Body
-    ctx.fillStyle = this.bodyColor;
-    ctx.fillRect(x - 2, y - LEMMING_HEIGHT, 4, LEMMING_HEIGHT);
+    // Exploder countdown display
+    if (this.state === 'exploding') {
+      const secondsLeft = Math.ceil(this.explodeTimer / 60);
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(secondsLeft), x, y - LEMMING_HEIGHT - 4);
 
-    // Hair/head
-    ctx.fillStyle = this.hairColor;
-    ctx.fillRect(x - 2, y - LEMMING_HEIGHT, 4, 3);
-
-    // Direction indicator (arm)
-    ctx.fillStyle = this.bodyColor;
-    if (this.direction === 1) {
-      ctx.fillRect(x + 2, y - 6, 2, 2);
-    } else {
-      ctx.fillRect(x - 4, y - 6, 2, 2);
+      // Flash body red as time runs out
+      if (this.explodeTimer < 60 && this.animFrame % 2 === 0) {
+        this.drawBody(ctx, x, y, '#ff2222', '#ff8800');
+        return;
+      }
     }
 
-    // Feet animation
-    if (this.state === 'walking') {
+    this.drawBody(ctx, x, y, '#4040ff', '#00cc00');
+  }
+
+  private drawBody(ctx: CanvasRenderingContext2D, x: number, y: number, bodyColor: string, hairColor: string): void {
+    const h = LEMMING_HEIGHT;
+
+    // Shadow/outline
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(x - 3, y - h - 1, 6, h + 2);
+
+    // Head (hair)
+    ctx.fillStyle = hairColor;
+    ctx.fillRect(x - 2, y - h, 4, 3);
+
+    // Face
+    ctx.fillStyle = '#ffcc88';
+    ctx.fillRect(x - 1, y - h + 2, 2, 2);
+
+    // Body
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(x - 2, y - h + 4, 4, 4);
+
+    // Arms based on state
+    switch (this.state) {
+      case 'blocking': {
+        // Arms out to sides
+        ctx.fillRect(x - 4, y - h + 4, 2, 2);
+        ctx.fillRect(x + 2, y - h + 4, 2, 2);
+        // Stop sign indicator
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(x - 3, y - h - 2, 6, 1);
+        break;
+      }
+      case 'digging': {
+        // Bent down with pickaxe
+        const pickOffset = this.animFrame < 2 ? 0 : 1;
+        ctx.fillStyle = '#aa8844';
+        ctx.fillRect(x + (this.direction * 2), y - 2 + pickOffset, 2, 3);
+        break;
+      }
+      case 'bashing': {
+        // Horizontal swing
+        const swingX = this.direction === 1 ? x + 2 : x - 4;
+        const swingOffset = this.animFrame % 2;
+        ctx.fillStyle = '#aa8844';
+        ctx.fillRect(swingX, y - h + 4 + swingOffset, 3, 2);
+        break;
+      }
+      case 'building': {
+        // Carrying brick
+        ctx.fillStyle = '#aa8844';
+        const brickDir = this.direction === 1 ? x + 2 : x - 4;
+        ctx.fillRect(brickDir, y - h + 5, 3, 2);
+        ctx.fillStyle = '#cc9955';
+        ctx.fillRect(brickDir, y - h + 3, 3, 2);
+        break;
+      }
+      case 'climbing': {
+        // Arms up against wall
+        ctx.fillRect(x + this.direction * 2, y - h + 2, 1, 3);
+        ctx.fillRect(x + this.direction * 2, y - h + 5 + (this.animFrame % 2), 1, 2);
+        break;
+      }
+      case 'mining': {
+        // Diagonal pickaxe
+        ctx.fillStyle = '#aa8844';
+        const mx = this.direction === 1 ? x + 2 : x - 3;
+        ctx.fillRect(mx, y - 2, 2, 2);
+        break;
+      }
+      default: {
+        // Walking/falling/floating - one arm forward
+        if (this.direction === 1) {
+          ctx.fillRect(x + 2, y - h + 5, 2, 2);
+        } else {
+          ctx.fillRect(x - 4, y - h + 5, 2, 2);
+        }
+      }
+    }
+
+    // Legs
+    ctx.fillStyle = bodyColor;
+    if (this.state === 'walking' || this.state === 'exploding') {
       const legOffset = this.animFrame < 2 ? 1 : -1;
+      ctx.fillRect(x - 2 + legOffset, y - 2, 2, 2);
+      ctx.fillRect(x + legOffset, y - 2, 2, 2);
+      // Feet
+      ctx.fillStyle = '#333366';
       ctx.fillRect(x - 1 + legOffset, y, 1, 1);
       ctx.fillRect(x + 1 - legOffset, y, 1, 1);
+    } else if (this.state === 'falling') {
+      ctx.fillRect(x - 2, y - 2, 2, 2);
+      ctx.fillRect(x, y - 2, 2, 2);
+    } else {
+      ctx.fillRect(x - 2, y - 2, 4, 2);
     }
 
-    // Ability indicators
-    if (this.state === 'blocking') {
-      ctx.fillStyle = '#ff4444';
-      ctx.fillRect(x - 3, y - LEMMING_HEIGHT - 2, 6, 1);
-    }
-    if (this.isClimber) {
-      ctx.fillStyle = '#ffff00';
-      ctx.fillRect(x - 1, y - LEMMING_HEIGHT - 1, 2, 1);
-    }
-    if (this.isFloater && this.state === 'floating') {
-      // Umbrella
+    // Floater umbrella
+    if (this.isFloater && (this.state === 'floating')) {
       ctx.fillStyle = '#ff88ff';
-      ctx.fillRect(x - 4, y - LEMMING_HEIGHT - 3, 8, 1);
-      ctx.fillRect(x, y - LEMMING_HEIGHT - 2, 1, 2);
+      // Umbrella canopy
+      ctx.fillRect(x - 5, y - h - 5, 10, 1);
+      ctx.fillRect(x - 4, y - h - 4, 8, 1);
+      ctx.fillRect(x - 3, y - h - 3, 6, 1);
+      // Handle
+      ctx.fillStyle = '#884488';
+      ctx.fillRect(x, y - h - 2, 1, 2);
     }
-    if (this.state === 'building') {
-      ctx.fillStyle = '#ffaa00';
-      const brickX = this.direction === 1 ? x + 2 : x - 4;
-      ctx.fillRect(brickX, y - 4, 2, 2);
+
+    // Climber indicator (small yellow mark on head)
+    if (this.isClimber && this.state !== 'climbing') {
+      ctx.fillStyle = '#ffff00';
+      ctx.fillRect(x - 1, y - h - 1, 2, 1);
     }
   }
 }
