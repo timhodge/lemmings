@@ -327,22 +327,26 @@ export class Lemming {
       this.state = 'walking';
       return;
     }
-    // Check for ceiling or wall where the NEXT step would be placed
+
+    // Place the step FIRST, then check if we can continue.
+    // This ensures the final step bridges right up to (or into) the wall.
+    const stepX = this.direction === 1 ? this.x : this.x - BUILD_STEP_WIDTH;
+    terrain.addRect(stepX, this.y, BUILD_STEP_WIDTH, BUILD_STEP_HEIGHT, '#a08050');
+
+    // Now check if we can move to the next position
     const nextY = this.y - BUILD_STEP_HEIGHT;
     const nextX = this.x + this.direction * (BUILD_STEP_WIDTH / 2);
     const ceilingAbove = terrain.isSolid(nextX, nextY - LEMMING_HEIGHT);
-    // Check if the step edge would touch existing terrain
-    const stepEdge = this.direction === 1 ? nextX + BUILD_STEP_WIDTH / 2 : nextX - BUILD_STEP_WIDTH / 2;
-    const bodyBlocked = terrain.isSolid(stepEdge, nextY) &&
-                        terrain.isSolid(stepEdge, nextY - 4);
+    // Is the lemming's body blocked at the next position?
+    const bodyBlocked = terrain.isSolid(nextX + this.direction, nextY) &&
+                        terrain.isSolid(nextX + this.direction, nextY - 4);
     if (ceilingAbove || bodyBlocked) {
+      // Can't continue, but the step is already placed. Turn around.
       this.direction *= -1;
       this.state = 'walking';
       return;
     }
-    const stepX = this.direction === 1 ? this.x : this.x - BUILD_STEP_WIDTH;
-    terrain.addRect(stepX, this.y, BUILD_STEP_WIDTH, BUILD_STEP_HEIGHT, '#a08050');
-    this.x += this.direction * (BUILD_STEP_WIDTH / 2);
+    this.x = nextX;
     this.y = nextY;
   }
 
