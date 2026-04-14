@@ -2,11 +2,11 @@ import type { AbilityType } from './types';
 import type { Terrain } from './terrain';
 import { drawSprite, getSpriteForState } from './sprites';
 
-const GRAVITY = 0.5;
-const WALK_SPEED = 0.25;
+const GRAVITY = 0.25;
+const WALK_SPEED = 0.125;
 const MAX_FALL = 60;
 const LEMMING_HEIGHT = 10;
-const CLIMB_SPEED = 0.25;
+const CLIMB_SPEED = 0.125;
 const BUILD_STEP_WIDTH = 6;
 const BUILD_STEP_HEIGHT = 2;
 const MAX_BUILD_STEPS = 12;
@@ -212,7 +212,7 @@ export class Lemming {
       this.fallDistance = 0;
       return;
     }
-    this.y += 0.3;
+    this.y += 0.15;
   }
 
   private updateWalking(terrain: Terrain): void {
