@@ -14,6 +14,7 @@ const level: LevelData = {
   spawnInterval: 100,
   abilities: {
     miner: 8,
+    basher: 5,
     blocker: 2,
     builder: 3,
   },

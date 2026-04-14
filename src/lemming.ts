@@ -343,13 +343,21 @@ export class Lemming {
     if (this.mineTimer < 6) return;
     this.mineTimer = 0;
 
-    const mineX = this.x + this.direction * 3;
-    const mineY = this.y + 2;
-    if (!terrain.isSolid(mineX, mineY)) {
+    // Check ahead and below for terrain to mine (look past the last cleared area)
+    let hasTerrain = false;
+    for (let d = 3; d <= 10; d++) {
+      if (terrain.isSolid(this.x + this.direction * d, this.y + d)) {
+        hasTerrain = true;
+        break;
+      }
+    }
+    if (!hasTerrain) {
       this.state = 'falling';
       this.fallDistance = 0;
       return;
     }
+    const mineX = this.x + this.direction * 3;
+    const mineY = this.y + 2;
     terrain.removeCircle(mineX, mineY, 5);
     this.x += this.direction * 2;
     this.y += 2;
