@@ -16,6 +16,7 @@ const level: LevelData = {
     climber: 12,
     builder: 5,
     blocker: 2,
+    exploder: 1,
   },
   buildTerrain(ctx, w, h) {
     ctx.fillStyle = this.terrainColor;

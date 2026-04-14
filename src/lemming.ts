@@ -327,13 +327,14 @@ export class Lemming {
       this.state = 'walking';
       return;
     }
-    // Check for wall ahead or ceiling before placing step
+    // Check for ceiling or wall where the NEXT step would be placed
     const nextY = this.y - BUILD_STEP_HEIGHT;
     const nextX = this.x + this.direction * (BUILD_STEP_WIDTH / 2);
-    const wallAhead = terrain.isSolid(nextX + this.direction * 4, this.y) ||
-                      terrain.isSolid(nextX + this.direction * 4, this.y - 5);
-    const ceilingAbove = terrain.isSolid(this.x, nextY - LEMMING_HEIGHT);
-    if (wallAhead || ceilingAbove) {
+    const ceilingAbove = terrain.isSolid(nextX, nextY - LEMMING_HEIGHT);
+    // Check if the lemming's body would be inside terrain after moving
+    const bodyBlocked = terrain.isSolid(nextX + this.direction * 2, nextY) &&
+                        terrain.isSolid(nextX + this.direction * 2, nextY - 4);
+    if (ceilingAbove || bodyBlocked) {
       this.direction *= -1;
       this.state = 'walking';
       return;
