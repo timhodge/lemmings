@@ -22,6 +22,8 @@ const level: LevelData = {
   spawnInterval: 90,
   abilities: {
     builder: 15,
+    blocker: 5,
+    exploder: 5,
   },
   buildTerrain(ctx, w, h) {
     ctx.fillStyle = this.terrainColor;
