@@ -136,8 +136,13 @@ export class Lemming {
         this.state = 'exploded';
         return;
       }
-      // While counting down, behave as a walker
-      this.updateWalking(terrain);
+      // While counting down, walk normally but also handle falling
+      if (!terrain.isSolid(this.x, this.y) && !terrain.isSolid(this.x, this.y + 1)) {
+        // Fall while exploding
+        this.y += GRAVITY;
+      } else {
+        this.updateWalking(terrain);
+      }
     } else {
       switch (this.state) {
         case 'falling':
@@ -306,13 +311,16 @@ export class Lemming {
       this.state = 'walking';
       return;
     }
+    // Check for ceiling before placing step
+    const nextY = this.y - BUILD_STEP_HEIGHT;
+    if (terrain.isSolid(this.x, nextY - LEMMING_HEIGHT)) {
+      this.state = 'walking';
+      return;
+    }
     const stepX = this.direction === 1 ? this.x : this.x - BUILD_STEP_WIDTH;
     terrain.addRect(stepX, this.y, BUILD_STEP_WIDTH, BUILD_STEP_HEIGHT, '#a08050');
     this.x += this.direction * (BUILD_STEP_WIDTH / 2);
-    this.y -= BUILD_STEP_HEIGHT;
-    if (terrain.isSolid(this.x, this.y - LEMMING_HEIGHT)) {
-      this.state = 'walking';
-    }
+    this.y = nextY;
   }
 
   private updateMining(terrain: Terrain): void {

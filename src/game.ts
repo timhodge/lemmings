@@ -190,6 +190,7 @@ export class Game {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+      if (!this.running) return;
       switch (e.key) {
         case 'p':
         case ' ':
