@@ -231,7 +231,7 @@ export class Lemming {
     let canWalk = false;
     let newY = this.y;
 
-    // Check up to 6px up for slope climbing (stairs, miner dips, explosion craters)
+    // Check upward for slope climbing (stairs, ramps)
     for (let step = 0; step <= 6; step++) {
       if (!terrain.isSolid(nextX, this.y - step)) {
         canWalk = true;
@@ -240,13 +240,26 @@ export class Lemming {
       }
     }
 
+    // If blocked above, check downward for descending slopes (craters, dips)
+    if (!canWalk) {
+      for (let step = 1; step <= 6; step++) {
+        if (!terrain.isSolid(nextX, this.y + step)) {
+          canWalk = true;
+          newY = this.y + step;
+          break;
+        }
+      }
+    }
+
     if (canWalk) {
       this.x = nextX;
       this.y = newY;
-      // Snap down to ground, but limit to 6px (matches slope climb tolerance)
+      // Snap down to ground
+      let snapDist = 0;
       while (this.y < terrain.height - 1 && !terrain.isSolid(this.x, this.y + 1)) {
         this.y++;
-        if (this.y - newY > 6) {
+        snapDist++;
+        if (snapDist > 6) {
           if (this.state !== 'exploding') this.state = 'falling';
           this.fallDistance = 0;
           return;
