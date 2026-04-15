@@ -308,10 +308,11 @@ export class Game {
         this.deadCount++;
       }
 
-      // Blocker collision
+      // Blocker collision (includes blocker-turned-exploder still blocking)
       if (lem.state === 'walking' || lem.state === 'exploding') {
         for (const other of this.lemmings) {
-          if (other === lem || other.state !== 'blocking') continue;
+          if (other === lem) continue;
+          if (other.state !== 'blocking' && !other.explodeInPlace) continue;
           const dx = lem.x - other.x;
           if (Math.abs(dx) < 6 && Math.abs(lem.y - other.y) < 12) {
             lem.direction = dx > 0 ? 1 : -1;
