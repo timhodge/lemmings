@@ -303,14 +303,16 @@ export class Lemming {
     if (this.digTimer < 8) return;
     this.digTimer = 0;
 
+    // Clear 3 rows: current + 2 below. Ensures no stray floor pixel
+    // when platform thickness isn't a multiple of 2.
+    terrain.removeRect(this.digX - 6, this.y, 13, 3);
+    this.y += 2;
+
+    // Check if we've broken through
     if (!terrain.isSolid(this.x, this.y + 1) && !terrain.isSolid(this.x - 2, this.y + 1) && !terrain.isSolid(this.x + 2, this.y + 1)) {
       this.state = 'falling';
       this.fallDistance = 0;
-      return;
     }
-    // Use fixed digX so every strip aligns into one clean column
-    terrain.removeRect(this.digX - 6, this.y, 13, 2);
-    this.y += 2;
   }
 
   private updateBashing(terrain: Terrain): void {
