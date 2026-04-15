@@ -7,6 +7,12 @@ import level5 from './level5';
 import level6 from './level6';
 import level7 from './level7';
 import level8 from './level8';
+import level9 from './level9';
+import level10 from './level10';
+import level11 from './level11';
+import level12 from './level12';
+import level13 from './level13';
+import level14 from './level14';
 
 export const levels: LevelData[] = [
   level1,
@@ -17,4 +23,10 @@ export const levels: LevelData[] = [
   level6,
   level7,
   level8,
+  level9,
+  level10,
+  level11,
+  level12,
+  level13,
+  level14,
 ];
