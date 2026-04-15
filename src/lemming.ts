@@ -231,8 +231,8 @@ export class Lemming {
     let canWalk = false;
     let newY = this.y;
 
-    // Check up to 4px up for slope climbing (handles stairs + miner dips)
-    for (let step = 0; step <= 4; step++) {
+    // Check up to 6px up for slope climbing (stairs, miner dips, explosion craters)
+    for (let step = 0; step <= 6; step++) {
       if (!terrain.isSolid(nextX, this.y - step)) {
         canWalk = true;
         newY = this.y - step;
