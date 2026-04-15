@@ -243,9 +243,10 @@ export class Lemming {
     if (canWalk) {
       this.x = nextX;
       this.y = newY;
+      // Snap down to ground, but limit to 6px (matches slope climb tolerance)
       while (this.y < terrain.height - 1 && !terrain.isSolid(this.x, this.y + 1)) {
         this.y++;
-        if (this.y - newY > 3) {
+        if (this.y - newY > 6) {
           if (this.state !== 'exploding') this.state = 'falling';
           this.fallDistance = 0;
           return;
@@ -286,7 +287,7 @@ export class Lemming {
       this.fallDistance = 0;
       return;
     }
-    terrain.removeRect(this.x - 4, this.y, 8, 2);
+    terrain.removeRect(this.x - 5, this.y, 10, 2);
     this.y += 2;
   }
 
