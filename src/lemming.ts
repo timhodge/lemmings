@@ -41,6 +41,7 @@ export class Lemming {
 
   // Ability timers
   digTimer = 0;
+  digX = 0; // Fixed x for consistent dig column
   bashTimer = 0;
   buildTimer = 0;
   buildCount = 0;
@@ -88,6 +89,7 @@ export class Lemming {
       case 'digger':
         this.state = 'digging';
         this.digTimer = 0;
+        this.digX = Math.floor(this.x);
         break;
       case 'basher':
         this.state = 'bashing';
@@ -306,10 +308,8 @@ export class Lemming {
       this.fallDistance = 0;
       return;
     }
-    // Use floor/ceil to ensure full pixel coverage at fractional positions
-    const digLeft = Math.floor(this.x) - 6;
-    const digRight = Math.ceil(this.x) + 6;
-    terrain.removeRect(digLeft, this.y, digRight - digLeft, 2);
+    // Use fixed digX so every strip aligns into one clean column
+    terrain.removeRect(this.digX - 6, this.y, 13, 2);
     this.y += 2;
   }
 
