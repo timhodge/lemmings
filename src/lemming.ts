@@ -137,6 +137,12 @@ export class Lemming {
       this.explodeTimer--;
       if (this.explodeTimer <= 0) {
         terrain.removeCircle(this.x, this.y - 5, EXPLODE_RADIUS);
+        // Cut a clean rectangular corridor through the crater at walking level
+        // so lemmings don't snag on jagged circle-boundary pixels
+        terrain.removeRect(
+          this.x - EXPLODE_RADIUS, this.y - LEMMING_HEIGHT - 2,
+          EXPLODE_RADIUS * 2, LEMMING_HEIGHT + 4
+        );
         this.state = 'exploded';
         return;
       }
