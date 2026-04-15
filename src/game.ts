@@ -312,6 +312,7 @@ export class Game {
       if (lem.state === 'walking' || lem.state === 'exploding') {
         for (const other of this.lemmings) {
           if (other === lem) continue;
+          if (!other.isActive) continue;
           if (other.state !== 'blocking' && !other.explodeInPlace) continue;
           const dx = lem.x - other.x;
           if (Math.abs(dx) < 6 && Math.abs(lem.y - other.y) < 12) {

@@ -306,7 +306,10 @@ export class Lemming {
       this.fallDistance = 0;
       return;
     }
-    terrain.removeRect(this.x - 5, this.y, 10, 2);
+    // Use floor/ceil to ensure full pixel coverage at fractional positions
+    const digLeft = Math.floor(this.x) - 6;
+    const digRight = Math.ceil(this.x) + 6;
+    terrain.removeRect(digLeft, this.y, digRight - digLeft, 2);
     this.y += 2;
   }
 
