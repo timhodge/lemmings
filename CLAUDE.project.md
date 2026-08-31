@@ -91,8 +91,8 @@ Internal canvas is 800x500. CSS scales to 98vw (max 1600px) with `aspect-ratio: 
 ## Deployment
 
 - **Live URL:** https://lemmings.offwalter.com
-- **Hosting:** Caddy (Docker container `devsite-caddy`) on cc.offwalter.com VPS
-- **DNS:** Cloudflare A record -> 87.99.142.88, DNS-only (not proxied), Caddy handles TLS via Let's Encrypt
+- **Hosting:** Caddy (Docker container `devsite-caddy`) on box.offwalter.com VPS
+- **DNS:** Cloudflare A record -> 217.77.5.170, DNS-only (not proxied), Caddy handles TLS via Let's Encrypt (was 87.99.142.88 until the 2026-07-18 box move; that box is deleted)
 - **Caddy config:** `/home/th/dev-sites/caddy/Caddyfile` (static file_server with gzip + security headers)
 - **Docker Compose:** `/home/th/dev-sites/caddy/docker-compose.yml` (volume mounts dist/)
 - **Volume mount:** `/home/th/projects/lemmings/dist` -> `/srv/lemmings:ro` in container
