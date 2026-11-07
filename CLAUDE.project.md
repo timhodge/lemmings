@@ -102,6 +102,8 @@ After code changes: `npm run build` and files are served immediately (volume mou
 
 To reload Caddy config: `docker exec devsite-caddy caddy reload --config /etc/caddy/Caddyfile`
 
+**Not deployed as of 2026-11-07.** The recipe below describes the setup when it last served: there is no `lemmings` vhost in `/home/th/dev-sites/caddy/Caddyfile`, the `lemmings/dist` volume mount was dropped from the Caddy compose file on 2026-09-21 (no vhost had served it since before 2026-07-19 and the hostname TLS-failed), and `lemmings.offwalter.com` has no DNS record (`dig +short lemmings.offwalter.com @1.1.1.1` is empty). To publish again: add the mount and the vhost back, then create the A record by hand in Cloudflare (the box's Workers-scoped token cannot create DNS records; `cloudflare-edge-ops` section 3).
+
 ## Dev Commands
 
 ```bash
